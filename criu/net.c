@@ -3484,11 +3484,15 @@ int kerndat_link_nsid(void)
 		}
 
 		has_link_nsid = false;
-		if (check_link_nsid(sk, &has_link_nsid))
+		if (check_link_nsid(sk, &has_link_nsid)) {
+			pr_perror("check_link_nsid failed");
 			exit(1);
+		}
 
-		if (!has_link_nsid)
+		if (!has_link_nsid) {
+			pr_perror("check_link_nsid succeeded but has_link_nsid is false");
 			exit(5);
+		}
 
 		close(sk);
 
