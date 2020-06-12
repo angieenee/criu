@@ -69,8 +69,10 @@ int main(int argc, char *argv[], char *envp[])
 	BUG_ON(get_service_fd(SERVICE_FD_MIN+1) <
 	       get_service_fd(SERVICE_FD_MAX-1));
 
-	if (fault_injection_init())
+	if (fault_injection_init()) {
+		pr_err("fault_injection_init failed.\n");
 		return 1;
+	}
 
 	cr_pb_init();
 	setproctitle_init(argc, argv, envp);
@@ -137,8 +139,10 @@ int main(int argc, char *argv[], char *envp[])
 		}
 
 		opts.exec_cmd = xmalloc((argc - optind) * sizeof(char *));
-		if (!opts.exec_cmd)
+		if (!opts.exec_cmd) {
+			pr_err("Memory allocation failed.\n");
 			return 1;
+		}
 		memcpy(opts.exec_cmd, &argv[optind + 1], (argc - optind - 1) * sizeof(char *));
 		opts.exec_cmd[argc - optind - 1] = NULL;
 	} else {
@@ -187,8 +191,10 @@ int main(int argc, char *argv[], char *envp[])
 	if (log_init(opts.output))
 		return 1;
 
-	if (kerndat_init())
+	if (kerndat_init()) {
+		pr_err("kerndat_init failed.\n");
 		return 1;
+	}
 
        if (fault_injected(FI_CANNOT_MAP_VDSO))
                kdat.can_map_vdso = 0;
