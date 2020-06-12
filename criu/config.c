@@ -785,7 +785,7 @@ int parse_options(int argc, char **argv, bool *usage_error,
 			break;
 		case 1073:
 			if (add_external(optarg)) {
-				pr_err("Could not add external when initializing config: %s\n", optarg);
+				pr_err("Could not add external resource when initializing config: %s\n", optarg);
 				return 1;
 			}
 			break;
