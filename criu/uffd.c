@@ -262,21 +262,16 @@ static int uffd_api_ioctl(void *arg, int fd, pid_t pid)
 	return ioctl(fd, UFFDIO_API, uffdio_api);
 }
 
-int uffd_open(int flags, unsigned long *features, bool userfaultfd_ok_to_fail)
+int uffd_open(int flags, unsigned long *features)
 {
 	struct uffdio_api uffdio_api = { 0 };
 	int uffd;
 
 	uffd = syscall(SYS_userfaultfd, flags);
 	if (uffd == -1) {
-		if (userfaultfd_ok_to_fail) {
-			pr_info("Lazy pages are not available: %s\n", strerror(errno));
-		} else {
-			pr_perror("Lazy pages are not available");
-		}
+		pr_info("Lazy pages are not available: %s\n", strerror(errno));
 		return -errno;
 	}
-
 	uffdio_api.api = UFFD_API;
 	if (features)
 		uffdio_api.features = *features;
@@ -317,7 +312,7 @@ int setup_uffd(int pid, struct task_restore_args *task_args)
 	 * Open userfaulfd FD which is passed to the restorer blob and
 	 * to a second process handling the userfaultfd page faults.
 	 */
-	task_args->uffd = uffd_open(O_CLOEXEC | O_NONBLOCK, &features, false);
+	task_args->uffd = uffd_open(O_CLOEXEC | O_NONBLOCK, &features);
 	if (task_args->uffd < 0) {
 		pr_perror("Unable to open an userfaultfd descriptor");
 		return -1;

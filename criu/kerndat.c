@@ -900,7 +900,7 @@ static int kerndat_uffd(void)
 	int uffd;
 
 	kdat.uffd_features = 0;
-	uffd = uffd_open(0, &kdat.uffd_features, true);
+	uffd = uffd_open(0, &kdat.uffd_features);
 
 	/*
 	 * uffd == -ENOSYS means userfaultfd is not supported on this
@@ -911,8 +911,7 @@ static int kerndat_uffd(void)
 	if (uffd < 0) {
 		if (uffd == -ENOSYS)
 			return 0;
-
-		pr_err("Lazy pages are not available\n");
+		pr_perror("Unable to open an userfaultfd descriptor");
 		return -1;
 	}
 
