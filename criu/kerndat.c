@@ -391,10 +391,10 @@ static int init_zero_page_pfn(void)
 	munmap(addr, PAGE_SIZE);
 
 	if (kdat.zero_page_pfn == 0) {
-		pr_perror("vaddr_to_pfn succeeded but kdat.zero_page_pfn is invalid.\n");
+		pr_err("vaddr_to_pfn succeeded but kdat.zero_page_pfn is invalid.\n");
 		ret = -1;
 	}
-		
+
 	return ret;
 }
 
@@ -622,7 +622,7 @@ static int kerndat_compat_restore(void)
 
 	ret = kdat_can_map_vdso();
 	if (ret < 0) {
-		pr_perror("kdat_can_map_vdso failed");
+		pr_err("kdat_can_map_vdso failed\n");
 		return ret;
 	}
 	kdat.can_map_vdso = !!ret;
@@ -659,7 +659,7 @@ static int kerndat_detect_stack_guard_gap(void)
 
 	maps = fopen("/proc/self/maps", "r");
 	if (maps == NULL) {
-		pr_perror("Could not open /proc/self/maps.\n");
+		pr_perror("Could not open /proc/self/maps");
 		munmap(mem, 4096);
 		return -1;
 	}
@@ -815,8 +815,8 @@ static int kerndat_x86_has_ptrace_fpu_xsave_bug(void)
 	int ret = kdat_x86_has_ptrace_fpu_xsave_bug();
 
 	if (ret < 0) {
-		pr_perror("kdat_x86_has_ptrace_fpu_xsave_bug failed");
-		return ret;	
+		pr_err("kdat_x86_has_ptrace_fpu_xsave_bug failed\n");
+		return ret;
 	}
 
 	kdat.x86_has_ptrace_fpu_xsave_bug = !!ret;
@@ -946,7 +946,7 @@ int kerndat_has_thp_disable(void)
 
 	if (prctl(PR_SET_THP_DISABLE, 1, 0, 0, 0)) {
 		if (errno != EINVAL) {
-			pr_perror("prctl PR_SET_THP_DISABLE failed.\n");
+			pr_perror("prctl PR_SET_THP_DISABLE failed");
 			return -1;
 		}
 		pr_info("PR_SET_THP_DISABLE is not available\n");
@@ -961,7 +961,7 @@ int kerndat_has_thp_disable(void)
 	}
 
 	if (prctl(PR_SET_THP_DISABLE, 0, 0, 0, 0)) {
-		pr_perror("prctl PR_SET_THP_DISABLE failed.\n");
+		pr_perror("prctl PR_SET_THP_DISABLE failed");
 		goto out_unmap;
 	}
 
@@ -1060,6 +1060,7 @@ int kerndat_init(void)
 	ret = kerndat_try_load_cache();
 	if (ret <= 0)
 		return ret;
+	ret = 0;
 
 	/* kerndat_try_load_cache can leave some trash in kdat */
 	memset(&kdat, 0, sizeof(kdat));
@@ -1149,7 +1150,7 @@ int kerndat_init(void)
 	}
 	/* Needs kdat.compat_cr filled before */
 	if (!ret && kerndat_vdso_fill_symtable()) {
-		pr_err("kerndat_vdso_fill_symtable failed when initializing kerndat\n");
+		pr_err("kerndat_vdso_fill_symtable failed when initializing kerndat.\n");
 		ret = 1;
 	}
 	/* Depends on kerndat_vdso_fill_symtable() */
