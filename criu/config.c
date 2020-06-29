@@ -588,7 +588,7 @@ int parse_options(int argc, char **argv, bool *usage_error,
 			break;
 		case 'x':
 			if (optarg && unix_sk_ids_parse(optarg) < 0) {
-				pr_err("unix_sk_ids_parse failed.\n");
+				pr_err("Failed to parse unix socket inode from optarg: %s\n", optarg);
 				return 1;
 			}
 			opts.ext_unix_sk = true;
@@ -651,14 +651,14 @@ int parse_options(int argc, char **argv, bool *usage_error,
 
 				*aux = '\0';
 				if (veth_pair_add(optarg, aux + 1)) {
-					pr_err("veth_pair_add failed.\n");
+					pr_err("Failed to add veth pair: %s, %s.\n", optarg, aux + 1);
 					return 1;
 				}
 			}
 			break;
 		case 1049:
 			if (add_script(optarg)) {
-				pr_err("add_script failed.\n");
+				pr_err("Failed to add action-script: %s.\n", optarg);
 				return 1;
 			}
 			break;
@@ -731,13 +731,13 @@ int parse_options(int argc, char **argv, bool *usage_error,
 			break;
 		case 1064:
 			if (!add_skip_mount(optarg)) {
-				pr_err("add_skip_mount failed.\n");
+				pr_err("Failed to add skip-mnt: %s\n", optarg);
 				return 1;
 			}
 			break;
 		case 1065:
 			if (!add_fsname_auto(optarg)) {
-				pr_err("add_fsname_auto failed.\n");
+				pr_err("Failed while parsing --enable-fs option: %s", optarg);
 				return 1;
 			}
 			break;
@@ -749,7 +749,7 @@ int parse_options(int argc, char **argv, bool *usage_error,
 			break;
 		case 1070:
 			if (irmap_scan_path_add(optarg)) {
-				pr_err("irmap_scan_path failed.\n");
+				pr_err("Failed while parsing --irmap-scan-path option: %s", optarg);
 				return -1;
 			}
 			break;
@@ -778,14 +778,14 @@ int parse_options(int argc, char **argv, bool *usage_error,
 
 				*aux = '\0';
 				if (ext_mount_add(optarg, aux + 1)) {
-					pr_err("ext_mount_add failed.\n");
+					pr_err("Could not add external mount when initializing config: %s, %s\n", optarg, aux + 1);
 					return 1;
 				}
 			}
 			break;
 		case 1073:
 			if (add_external(optarg)) {
-				pr_err("add_external failed.\n");
+				pr_err("Could not add external when initializing config: %s\n", optarg);
 				return 1;
 			}
 			break;

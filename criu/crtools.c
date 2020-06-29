@@ -70,7 +70,7 @@ int main(int argc, char *argv[], char *envp[])
 	       get_service_fd(SERVICE_FD_MAX-1));
 
 	if (fault_injection_init()) {
-		pr_err("fault_injection_init failed.\n");
+		pr_err("Failed to initialize fault injection when initializing crtools.\n");
 		return 1;
 	}
 
@@ -157,8 +157,10 @@ int main(int argc, char *argv[], char *envp[])
 	/* We must not open imgs dir, if service is called */
 	if (strcmp(argv[optind], "service")) {
 		ret = open_image_dir(opts.imgs_dir);
-		if (ret < 0)
+		if (ret < 0) {
+			pr_err("Couldn't open image dir: %s", opts.imgs_dir);
 			return 1;
+		}
 	}
 
 	/*
@@ -192,7 +194,7 @@ int main(int argc, char *argv[], char *envp[])
 		return 1;
 
 	if (kerndat_init()) {
-		pr_err("kerndat_init failed.\n");
+		pr_err("Could not initialize kerndat.\n");
 		return 1;
 	}
 
