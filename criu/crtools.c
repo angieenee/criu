@@ -139,8 +139,10 @@ int main(int argc, char *argv[], char *envp[])
 		}
 
 		opts.exec_cmd = xmalloc((argc - optind) * sizeof(char *));
-		if (!opts.exec_cmd)
+		if (!opts.exec_cmd) {
+			pr_err("Memory allocation failed.\n");
 			return 1;
+		}
 		memcpy(opts.exec_cmd, &argv[optind + 1], (argc - optind - 1) * sizeof(char *));
 		opts.exec_cmd[argc - optind - 1] = NULL;
 	} else {
