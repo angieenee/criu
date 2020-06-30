@@ -394,7 +394,6 @@ static int init_zero_page_pfn(void)
 		pr_err("vaddr_to_pfn succeeded but kdat.zero_page_pfn is invalid.\n");
 		ret = -1;
 	}
-
 	return ret;
 }
 
