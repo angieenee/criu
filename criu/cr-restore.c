@@ -3128,6 +3128,24 @@ static void rst_reloc_creds(struct thread_restore_args *thread_args,
 	thread_args->creds_args = args;
 }
 
+static bool groups_are_okay(gid_t* groups, int n_groups) {
+	int check_num_groups, gids_len;
+	bool groups_are_ok;
+	gid_t* gids;
+
+	check_num_groups = getgroups(0, NULL);
+	if (check_num_groups != n_groups)
+		return false;
+	if (check_num_groups == 0)
+		return true;
+	gids_len = check_num_groups * sizeof(unsigned int);
+	gids = (gid_t*)xmalloc(gids_len * sizeof(gid_t));
+	check_num_groups = getgroups(check_num_groups, gids);
+	groups_are_ok = !memcmp(gids, groups, gids_len);
+	xfree(gids);
+	return groups_are_ok;
+}
+
 static struct thread_creds_args *
 rst_prep_creds_args(CredsEntry *ce, unsigned long *prev_pos)
 {
@@ -3235,7 +3253,7 @@ rst_prep_creds_args(CredsEntry *ce, unsigned long *prev_pos)
 	memcpy(args->cap_prm, ce->cap_prm, sizeof(args->cap_prm));
 	memcpy(args->cap_bnd, ce->cap_bnd, sizeof(args->cap_bnd));
 
-	if (ce->n_groups) {
+	if (ce->n_groups && !groups_are_okay(ce->groups, ce->n_groups)) {
 		unsigned int *groups;
 
 		args->mem_groups_pos = rst_mem_align_cpos(RM_PRIVATE);
