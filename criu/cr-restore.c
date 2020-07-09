@@ -3129,21 +3129,21 @@ static void rst_reloc_creds(struct thread_restore_args *thread_args,
 }
 
 static bool groups_are_okay(gid_t* groups, int n_groups) {
-	int check_num_groups, gids_len;
-	bool groups_are_ok;
+	int n, len;
+	bool ret;
 	gid_t* gids;
 
-	check_num_groups = getgroups(0, NULL);
-	if (check_num_groups != n_groups)
+	n = getgroups(0, NULL);
+	if (n != n_groups)
 		return false;
-	if (check_num_groups == 0)
+	if (n == 0)
 		return true;
-	gids_len = check_num_groups * sizeof(unsigned int);
-	gids = (gid_t*)xmalloc(gids_len * sizeof(gid_t));
-	check_num_groups = getgroups(check_num_groups, gids);
-	groups_are_ok = !memcmp(gids, groups, gids_len);
+	len = n * sizeof(gid_t);
+	gids = (gid_t*)xmalloc(len);
+	n = getgroups(n, gids);
+	ret = !memcmp(gids, groups, len);
 	xfree(gids);
-	return groups_are_ok;
+	return ret;
 }
 
 static struct thread_creds_args *
