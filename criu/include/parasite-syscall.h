@@ -35,7 +35,7 @@ extern int parasite_dump_creds(struct parasite_ctl *ctl, struct _CredsEntry *ce)
 extern int parasite_dump_thread_leader_seized(struct parasite_ctl *ctl, int pid, struct _CoreEntry *core);
 extern int parasite_dump_thread_seized(struct parasite_thread_ctl *tctl,
 				       struct parasite_ctl *ctl, int id,
-				       struct pid *tid, struct _CoreEntry *core);
+				       struct pid *tid, struct _CoreEntry *core, struct parasite_dump_cgroup_args *cgroup);
 extern int dump_thread_core(int pid, CoreEntry *core,
 					const struct parasite_dump_thread *dt);
 

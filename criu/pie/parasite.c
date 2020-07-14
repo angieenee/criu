@@ -652,10 +652,10 @@ static int parasite_dump_cgroup(struct parasite_dump_cgroup_args *args)
 		return -1;
 	}
 
-	cgroup = sys_openat(proc, "self/cgroup", O_RDONLY, 0);
+	cgroup = sys_openat(proc, "thread-self/cgroup", O_RDONLY, 0);
 	sys_close(proc);
 	if (cgroup < 0) {
-		pr_err("can't get /proc/self/cgroup fd\n");
+		pr_err("can't get /proc/thread-self/cgroup fd\n");
 		sys_close(cgroup);
 		return -1;
 	}
@@ -663,12 +663,12 @@ static int parasite_dump_cgroup(struct parasite_dump_cgroup_args *args)
 	len = sys_read(cgroup, args->contents, sizeof(args->contents));
 	sys_close(cgroup);
 	if (len < 0) {
-		pr_err("can't read /proc/self/cgroup %d\n", len);
+		pr_err("can't read /proc/thread-self/cgroup %d\n", len);
 		return -1;
 	}
 
 	if (len == sizeof(args->contents)) {
-		pr_warn("/proc/self/cgroup was bigger than the page size\n");
+		pr_warn("/proc/thread-self/cgroup was bigger than the page size\n");
 		return -1;
 	}
 
@@ -743,6 +743,8 @@ int parasite_trap_cmd(int cmd, void *args)
 	switch (cmd) {
 	case PARASITE_CMD_DUMP_THREAD:
 		return dump_thread(args);
+	case PARASITE_CMD_DUMP_CGROUP:
+		return parasite_dump_cgroup(args);
 	}
 
 	pr_err("Unknown command to parasite: %d\n", cmd);
