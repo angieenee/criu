@@ -1409,8 +1409,6 @@ static int dump_one_task(struct pstree_item *item, InventoryEntry *parent_ie)
 		goto err_cure;
 	}
 
-	pr_info("avtni@ Successfully dumped threads for pid: %d\n", item->pid->real);
-
 	/*
 	 * On failure local map will be cured in cr_dump_finish()
 	 * for lazy pages.

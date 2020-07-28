@@ -215,7 +215,6 @@ int parasite_dump_thread_seized(struct parasite_thread_ctl *tctl,
 	}
 
 	compel_release_thread(tctl);
-	pr_info("avtni@ Parasite retrieved cgroup: %s\n", cgroup->contents);
 
 	tid->ns[0].virt = args->tid;
 	return dump_thread_core(pid, core, args);

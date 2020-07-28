@@ -10,7 +10,7 @@ struct parasite_dump_cgroup_args;
 extern u32 root_cg_set;
 int dump_task_cgroup(struct pid *, u32 *, struct parasite_dump_cgroup_args *args);
 int dump_cgroups(void);
-int prepare_task_cgroup(struct pstree_item *);
+int prepare_task_cgroup(u32 cg_set, u32 ancestor_cg_set, bool is_root_task);
 int prepare_cgroup(void);
 /* Restore things like cpu_limit in known cgroups. */
 int prepare_cgroup_properties(void);

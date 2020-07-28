@@ -1207,32 +1207,21 @@ static int move_in_cgroup(CgSetEntry *se, bool setup_cgns)
 	return 0;
 }
 
-int prepare_task_cgroup(struct pstree_item *me)
+int prepare_task_cgroup(u32 cg_set, u32 ancestor_cg_set, bool is_root_task)
 {
-	struct pstree_item *parent = me->parent;
 	CgSetEntry *se;
-	u32 current_cgset;
 
-	if (!rsti(me)->cg_set)
+	if (!cg_set)
 		return 0;
 
-	/* Zombies and helpers can have cg_set == 0 so we skip them */
-	while (parent && !rsti(parent)->cg_set)
-		parent = parent->parent;
-
-	if (parent)
-		current_cgset = rsti(parent)->cg_set;
-	else
-		current_cgset = root_cg_set;
-
-	if (rsti(me)->cg_set == current_cgset) {
-		pr_info("Cgroups %d inherited from parent\n", current_cgset);
+	if (cg_set == ancestor_cg_set) {
+		pr_info("Cgroups %d inherited from parent\n", ancestor_cg_set);
 		return 0;
 	}
 
-	se = find_rst_set_by_id(rsti(me)->cg_set);
+	se = find_rst_set_by_id(cg_set);
 	if (!se) {
-		pr_err("No set %d found\n", rsti(me)->cg_set);
+		pr_err("No set %d found\n", cg_set);
 		return -1;
 	}
 
@@ -1241,8 +1230,7 @@ int prepare_task_cgroup(struct pstree_item *me)
 	 * just check that the cgns prefix string matches for all the entries
 	 * in the cgset, and only unshare if that's true.
 	 */
-
-	return move_in_cgroup(se, !me->parent);
+	return move_in_cgroup(se, is_root_task);
 }
 
 void fini_cgroup(void)
