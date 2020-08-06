@@ -1781,6 +1781,8 @@ static int create_children_and_session(void)
 static int restore_task_with_children(void *_arg)
 {
 	struct cr_clone_arg *ca = _arg;
+	struct pstree_item *parent = ca->item->parent;
+	u32 current_cg_set = 0;
 	pid_t pid;
 	int ret;
 
@@ -1850,13 +1852,22 @@ static int restore_task_with_children(void *_arg)
 	if (needs_prep_creds(current) && (prepare_userns_creds()))
 		goto err;
 
+	/* Zombies and helpers can have cg_set == 0 so we skip them */
+	while (parent && !rsti(parent)->cg_set)
+		parent = parent->parent;
+
+	if (current_cg_set)
+		current_cg_set = rsti(parent)->cg_set;
+	else
+		current_cg_set = root_cg_set;
+
 	/*
 	 * Call this _before_ forking to optimize cgroups
 	 * restore -- if all tasks live in one set of cgroups
 	 * we will only move the root one there, others will
 	 * just have it inherited.
 	 */
-	if (prepare_task_cgroup(current) < 0)
+	if (prepare_task_cgroup(rsti(current)->cg_set, current_cg_set, !current->parent) < 0)
 		goto err;
 
 	/* Restore root task */

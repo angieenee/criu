@@ -99,6 +99,7 @@ message thread_core_entry {
 
 	optional string			comm		= 13;
 	optional uint64			blk_sigset_extended	= 14;
+	optional uint32			cg_set		= 15;
 }
 
 message task_rlimits_entry {

@@ -162,9 +162,10 @@ int parasite_dump_thread_leader_seized(struct parasite_ctl *ctl, int pid, CoreEn
 
 int parasite_dump_thread_seized(struct parasite_thread_ctl *tctl,
 				struct parasite_ctl *ctl, int id,
-				struct pid *tid, CoreEntry *core)
+				struct pid *tid, CoreEntry *core, struct parasite_dump_cgroup_args *cgroup)
 {
 	struct parasite_dump_thread *args;
+	struct parasite_dump_cgroup_args *cgargs;
 	pid_t pid = tid->real;
 	ThreadCoreEntry *tc = core->thread_core;
 	CredsEntry *creds = tc->creds;
@@ -173,11 +174,6 @@ int parasite_dump_thread_seized(struct parasite_thread_ctl *tctl,
 
 	BUG_ON(id == 0); /* Leader is dumped in dump_task_core_all */
 
-	args = compel_parasite_args(ctl, struct parasite_dump_thread);
-
-	pc = args->creds;
-	pc->cap_last_cap = kdat.last_cap;
-
 	tc->has_blk_sigset = true;
 #ifdef CONFIG_MIPS
 	memcpy(&tc->blk_sigset, (unsigned long *)compel_thread_sigmask(tctl), sizeof(tc->blk_sigset));
@@ -185,11 +181,26 @@ int parasite_dump_thread_seized(struct parasite_thread_ctl *tctl,
 #else
 	memcpy(&tc->blk_sigset, compel_thread_sigmask(tctl), sizeof(k_rtsigset_t));
 #endif
+
+	cgargs = compel_parasite_args(ctl, struct parasite_dump_cgroup_args);
+
+	ret = compel_run_in_thread(tctl, PARASITE_CMD_DUMP_CGROUP);
+	if (ret) {
+		pr_err("Can't dump thread cgroup %d\n", pid);
+		goto err_rth;
+	}
+	*cgroup = *cgargs;
+
 	ret = compel_get_thread_regs(tctl, save_task_regs, core);
 	if (ret) {
 		pr_err("Can't obtain regs for thread %d\n", pid);
 		goto err_rth;
 	}
+
+	args = compel_parasite_args(ctl, struct parasite_dump_thread);
+
+	pc = args->creds;
+	pc->cap_last_cap = kdat.last_cap;
 
 	ret = compel_run_in_thread(tctl, PARASITE_CMD_DUMP_THREAD);
 	if (ret) {

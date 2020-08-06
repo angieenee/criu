@@ -64,6 +64,7 @@
 #include "kerndat.h"
 #include "stats.h"
 #include "mem.h"
+#include "pid.h"
 #include "page-pipe.h"
 #include "posix-timer.h"
 #include "vdso.h"
@@ -782,7 +783,7 @@ static int dump_task_core_all(struct parasite_ctl *ctl,
 	}
 
 	core->tc->has_cg_set = true;
-	ret = dump_task_cgroup(item, &core->tc->cg_set, info);
+	ret = dump_task_cgroup(item->pid, &core->tc->cg_set, info);
 	if (ret)
 		goto err;
 
@@ -846,6 +847,7 @@ static int dump_task_thread(struct parasite_ctl *parasite_ctl,
 				const struct pstree_item *item, int id)
 {
 	struct parasite_thread_ctl *tctl = dmpi(item)->thread_ctls[id];
+	struct parasite_dump_cgroup_args cgroup_args;
 	struct pid *tid = &item->threads[id];
 	CoreEntry *core = item->core[id];
 	pid_t pid = tid->real;
@@ -856,12 +858,18 @@ static int dump_task_thread(struct parasite_ctl *parasite_ctl,
 	pr_info("Dumping core for thread (pid: %d)\n", pid);
 	pr_info("----------------------------------------\n");
 
-	ret = parasite_dump_thread_seized(tctl, parasite_ctl, id, tid, core);
+	ret = parasite_dump_thread_seized(tctl, parasite_ctl, id, tid, core, &cgroup_args);
 	if (ret) {
 		pr_err("Can't dump thread for pid %d\n", pid);
 		goto err;
 	}
 	pstree_insert_pid(tid);
+
+	ret = dump_task_cgroup(tid, &core->thread_core->cg_set, &cgroup_args);
+	if (ret) {
+		pr_err("Can't dump thread cgroup for pid %d\n", pid);
+		goto err;
+	}
 
 	img = open_image(CR_FD_CORE, O_DUMP, tid->ns[0].virt);
 	if (!img)
