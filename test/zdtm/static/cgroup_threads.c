@@ -50,7 +50,7 @@ static int cg_check(char *name)
 	FILE *cgf;
 	char paux[256], aux[128];
 
-	cgf = fopen("/proc/self/cgroup", "r");
+	cgf = fopen("/proc/thread-self/cgroup", "r");
 	if (cgf == NULL)
 		return -1;
 
