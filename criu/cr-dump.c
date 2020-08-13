@@ -865,6 +865,7 @@ static int dump_task_thread(struct parasite_ctl *parasite_ctl,
 	}
 	pstree_insert_pid(tid);
 
+	core->thread_core->has_cg_set = true;
 	ret = dump_task_cgroup(tid, &core->thread_core->cg_set, &cgroup_args);
 	if (ret) {
 		pr_err("Can't dump thread cgroup for pid %d\n", pid);

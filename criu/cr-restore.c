@@ -1867,7 +1867,7 @@ static int restore_task_with_children(void *_arg)
 	 * we will only move the root one there, others will
 	 * just have it inherited.
 	 */
-	if (prepare_task_cgroup(rsti(current)->cg_set, current_cg_set, !current->parent) < 0)
+	if (prepare_task_cgroup(rsti(current)->cg_set, current_cg_set, !current->parent, getpid()) < 0)
 		goto err;
 
 	/* Restore root task */
@@ -2213,7 +2213,9 @@ static int restore_root_task(struct pstree_item *init)
 	enum trace_flags flag = TRACE_ALL;
 	int ret, fd, mnt_ns_fd = -1;
 	int root_seized = 0;
+	int thread_index = 0;
 	struct pstree_item *item;
+	ThreadCoreEntry *current_thread;
 
 	ret = run_scripts(ACT_PRE_RESTORE);
 	if (ret != 0) {
@@ -2359,6 +2361,29 @@ skip_ns_bouncing:
 	ret = restore_switch_stage(CR_STATE_RESTORE_SIGCHLD);
 	if (ret < 0)
 		goto out_kill;
+
+	/*
+	 * Processes contain themselves as leader thread, so we only restore
+	 * thread cgroups if a process contains more than one thread.
+	 * Otherwise, the leader thread maintains its process's cgroup.
+	 */
+	for_each_pstree_item(item) {
+		if (!task_alive(item) || (item->nr_threads < 2))
+			continue;
+		current = item;
+		open_core(vpid(item), &item->core[0]);
+		open_cores(vpid(item), item->core[0]);
+
+		for (thread_index = 1; thread_index < item->nr_threads; thread_index++) {
+			current_thread = item->core[thread_index]->thread_core;
+			if (prepare_task_cgroup(current_thread->cg_set, rsti(item)->cg_set,
+					false, item->threads[thread_index].ns[0].virt) < 0)
+				pr_err("Failed to restore thread to cgroup %d\n", current_thread->cg_set);
+
+			core_entry__free_unpacked(item->core[thread_index], NULL);
+		}
+		core_entry__free_unpacked(item->core[0], NULL);
+	}
 
 	ret = stop_usernsd();
 	if (ret < 0)

@@ -42,6 +42,11 @@ struct cg_set {
 	struct list_head	ctls;
 };
 
+struct task_id_path {
+	pid_t			tid;
+	char			path[PATH_MAX];
+};
+
 static LIST_HEAD(cg_sets);
 static unsigned int n_sets;
 static CgSetEntry **rst_sets;
@@ -1064,40 +1069,43 @@ bool is_special_property(const char *prop)
 	return false;
 }
 
-static int userns_move(void *arg, int fd, pid_t pid)
+static int userns_move(void *args, int fd, pid_t pid)
 {
 	char pidbuf[32];
 	int cg, len, err;
-
-	len = snprintf(pidbuf, sizeof(pidbuf), "%d", pid);
+	pid_t move_id;
+	struct task_id_path *args_path = (struct task_id_path*) args;
+	
+	move_id = args_path->tid;
+	len = snprintf(pidbuf, sizeof(pidbuf), "%d", move_id);
 
 	if (len >= sizeof(pidbuf)) {
-		pr_err("pid printing failed: %d\n", pid);
+		pr_err("pid printing failed: %d\n", move_id);
 		return -1;
 	}
 
 	cg = get_service_fd(CGROUP_YARD);
-	err = fd = openat(cg, arg, O_WRONLY);
+	err = fd = openat(cg, args_path->path, O_WRONLY);
 	if (fd >= 0) {
 		err = write(fd, pidbuf, len);
 		close(fd);
 	}
 
 	if (err < 0) {
-		pr_perror("Can't move %s into %s (%d/%d)", pidbuf, (char *)arg, err, fd);
+		pr_perror("Can't move %s into %s (%d/%d)", pidbuf, (char *)args_path->path, err, fd);
 		return -1;
 	}
 
 	return 0;
 }
 
-static int prepare_cgns(CgSetEntry *se)
+static int prepare_cgns(CgSetEntry *se, pid_t pid)
 {
 	int i;
 	bool do_unshare = false;
 
 	for (i = 0; i < se->n_ctls; i++) {
-		char aux[PATH_MAX];
+		struct task_id_path args;
 		int j, aux_off;
 		CgMemberEntry *ce = se->ctls[i];
 		CgControllerEntry *ctrl = NULL;
@@ -1115,7 +1123,7 @@ static int prepare_cgns(CgSetEntry *se)
 			return -1;
 		}
 
-		aux_off = ctrl_dir_and_opt(ctrl, aux, sizeof(aux), NULL, 0);
+		aux_off = ctrl_dir_and_opt(ctrl, args.path, sizeof(args.path), NULL, 0);
 
 		/* We need to do an unshare() here as unshare() pins the root
 		 * of the cgroup namespace to whatever the current cgroups are.
@@ -1137,16 +1145,16 @@ static int prepare_cgns(CgSetEntry *se)
 			ce->path[ce->cgns_prefix] = '\0';
 
 			pr_info("setting cgns prefix to %s\n", ce->path);
-			snprintf(aux + aux_off, sizeof(aux) - aux_off, "/%s/tasks", ce->path);
+			snprintf(args.path + aux_off, sizeof(args.path) - aux_off, "/%s/tasks", ce->path);
+			args.tid = pid;
 			ce->path[ce->cgns_prefix] = tmp;
-			if (userns_call(userns_move, 0, aux, strlen(aux) + 1, -1) < 0) {
-				pr_perror("couldn't set cgns prefix %s", aux);
+			if (userns_call(userns_move, 0, (void*) &args, sizeof(args), -1) < 0) {
+				pr_perror("couldn't set cgns prefix %s", args.path);
 				return -1;
 			}
 
 			do_unshare = true;
 		}
-
 	}
 
 	if (do_unshare && unshare(CLONE_NEWCGROUP) < 0) {
@@ -1157,20 +1165,20 @@ static int prepare_cgns(CgSetEntry *se)
 	return 0;
 }
 
-static int move_in_cgroup(CgSetEntry *se, bool setup_cgns)
+static int move_in_cgroup(CgSetEntry *se, bool setup_cgns, pid_t id)
 {
 	int i;
 
 	pr_info("Move into %d\n", se->id);
 
-	if (setup_cgns && prepare_cgns(se) < 0) {
+	if (setup_cgns && prepare_cgns(se, id) < 0) {
 		pr_err("failed preparing cgns\n");
 		return -1;
 	}
 
 	for (i = 0; i < se->n_ctls; i++) {
-		char aux[PATH_MAX];
 		int fd = -1, err, j, aux_off;
+		struct task_id_path args;
 		CgMemberEntry *ce = se->ctls[i];
 		CgControllerEntry *ctrl = NULL;
 
@@ -1187,7 +1195,7 @@ static int move_in_cgroup(CgSetEntry *se, bool setup_cgns)
 			return -1;
 		}
 
-		aux_off = ctrl_dir_and_opt(ctrl, aux, sizeof(aux), NULL, 0);
+		aux_off = ctrl_dir_and_opt(ctrl, args.path, sizeof(args.path), NULL, 0);
 
 		/* Note that unshare(CLONE_NEWCGROUP) doesn't change the view
 		 * of previously mounted cgroupfses; since we're restoring via
@@ -1195,11 +1203,12 @@ static int move_in_cgroup(CgSetEntry *se, bool setup_cgns)
 		 * the root cgns, we still want to use the full path here when
 		 * we move into the cgroup.
 		 */
-		snprintf(aux + aux_off, sizeof(aux) - aux_off, "/%s/tasks", ce->path);
-		pr_debug("  `-> %s\n", aux);
-		err = userns_call(userns_move, 0, aux, strlen(aux) + 1, -1);
+		snprintf(args.path + aux_off, sizeof(args.path) - aux_off, "/%s/tasks", ce->path);
+		pr_debug("  `-> %s\n", args.path);
+		args.tid = id;
+		err = userns_call(userns_move, 0, (void*) &args, sizeof(args), -1);
 		if (err < 0) {
-			pr_perror("Can't move into %s (%d/%d)", aux, err, fd);
+			pr_perror("Can't move into %s (%d/%d)", args.path, err, fd);
 			return -1;
 		}
 	}
@@ -1207,7 +1216,7 @@ static int move_in_cgroup(CgSetEntry *se, bool setup_cgns)
 	return 0;
 }
 
-int prepare_task_cgroup(u32 cg_set, u32 ancestor_cg_set, bool is_root_task)
+int prepare_task_cgroup(u32 cg_set, u32 ancestor_cg_set, bool is_root_task, pid_t pid)
 {
 	CgSetEntry *se;
 
@@ -1230,7 +1239,7 @@ int prepare_task_cgroup(u32 cg_set, u32 ancestor_cg_set, bool is_root_task)
 	 * just check that the cgns prefix string matches for all the entries
 	 * in the cgset, and only unshare if that's true.
 	 */
-	return move_in_cgroup(se, is_root_task);
+	return move_in_cgroup(se, is_root_task, pid);
 }
 
 void fini_cgroup(void)
